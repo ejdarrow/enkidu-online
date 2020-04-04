@@ -23,6 +23,23 @@ $(function() {
 
 	var $loginPage = $('.login.page');
 	var $chatPage = $('.chat.page');
+	var $editorPage = $('.editor.page');
+	
+        var defaultAreaWidth = 40;
+	var defaultAreaHeight = 20;
+
+
+	var $editorGridX = $("#grid-size-x");
+	var $editorGridY = $("#grid-size-y");
+	var $editorUnicodeEvaluator = $("#editor-unicode-evaluator");
+	var $editorUnicodeOutput = $("#editor-unicode-output");
+
+	var $editorExit = $("#exitEditor");
+	var $editorGraphics = $("#graphics-editor");
+	var $editorColliders = $("#colliders-editor");
+	var $editorColors = $("#colors-editor");
+	var $previewArea = $("#previewFrame");
+	var $editorOutput = $("#editor-output");
 
 	//Prompt for setting username
 	var username;
@@ -50,6 +67,7 @@ $(function() {
 		if(username) {
 			$loginPage.fadeOut();
 			$chatPage.show();
+			$chatPage.css("display","flex");
 			$loginPage.off('click');
 			$currentInput = $inputMessage.focus();
 
@@ -214,7 +232,8 @@ $(function() {
 	
 
 	const drawFrame = (frameData) => {
-		$gameFrame.val(frameData.frame);
+	//	logLocation();
+		$gameFrame.text(frameData.frame);
 		xLoc = frameData.userX;
 		yLoc = frameData.userY;
 		//Animations and shit can go here too.
@@ -231,7 +250,7 @@ $(function() {
 				y: yLoc
 			},
 			color: "#8B0000",
-			char:"N"
+			char:"NN"
 		};
 		socket.emit("move", locationData);
 	}
@@ -276,6 +295,120 @@ $(function() {
 	$inputMessage.on('input', () => {
 		updateTyping();
 	});
+	// Editor shit
+	$editorUnicodeEvaluator.on('input', () => {
+		$editorUnicodeOutput.html("expect: " + $editorUnicodeEvaluator.val());
+	});
+	$editorGridX.on('input', () => {
+		updateGridSizes();
+		updatePreviewFrame();
+	});
+	$editorGridY.on('input', () => {
+		updateGridSizes();
+		updatePreviewFrame();
+	});
+	
+	$editorGraphics.on('input', () => {
+		updatePreviewFrame();
+	});
+
+	$editorColliders.on('input', () => {
+		updatePreviewFrame();
+	});
+
+	$editorColors.on('input', () => {
+		updatePreviewFrame();
+		updateColorFields();
+	});
+
+
+	const updateColorFields = () => {
+		
+	}
+
+	//Testing mode right now.
+	const getPreviewColorMap = () => {
+		return {
+			"0": "#000000",
+			"1": "#FF0000",
+			"2": "#00FF00",
+			"3": "#0000FF"			
+		};
+	}
+
+	const updatePreviewFrame = () => {
+		var frameText = "";
+                var xWidth = Math.round($editorGridX.val()) * defaultAreaWidth;
+                var yWidth = Math.round($editorGridY.val()) * defaultAreaHeight;
+		var appropriateLength = xWidth * yWidth;
+
+		var graphicsValue = $editorGraphics.val().replace(/\n/g, "");
+		var collidersValue = $editorColliders.val().replace(/\n/g, "");
+		var colorsValue = $editorColors.val().replace(/\n/g, "");;
+		
+		var previewColorMap = getPreviewColorMap();
+
+		if(graphicsValue.length < appropriateLength){
+			graphicsValue = graphicsValue.concat("-".repeat(appropriateLength - graphicsValue.length));
+		}
+		if(collidersValue.length < appropriateLength){
+			collidersValue = collidersValue.concat("0".repeat(appropriateLength - collidersValue.length));
+		}
+		if(colorsValue.length < appropriateLength){
+			colorsValue = colorsValue.concat("0".repeat(appropriateLength - colorsValue.length));
+		}
+		//Everything is now padded out.
+		for(var i = 0; i < appropriateLength; i++){
+			var collider = false;
+			var color = previewColorMap[colorsValue.charAt(i)] || "#000000";
+			var element = "<span style=\"white-space:pre; color:" + color + "; ";
+			if(collidersValue.charAt(i) == "0"){
+				element += "text-decoration:line-through;\"";
+			} else {
+				element += "\"";
+			}
+			element += ">";
+			element += graphicsValue.charAt(i);
+
+			element += "</span>";
+			frameText += element;
+			if(i%(xWidth) == (xWidth - 1)){
+				frameText += "<br/>";
+			}
+		}
+		$previewArea.html(frameText);
+		var output = {};
+		output["colliders"] = collidersValue;
+		output["graphics"] = graphicsValue;
+		output["colors"] = colorsValue;
+		output["colorMap"] = previewColorMap;
+		output["xWidth"] = xWidth/defaultAreaWidth;
+		output["yWidth"] = yWidth/defaultAreaHeight;
+		$editorOutput.text("");
+		$editorOutput.text(JSON.stringify(output, null, "\t"));
+	}
+	updatePreviewFrame();
+
+
+	const updateGridSizes = () => {
+		var xWidth = Math.round($editorGridX.val()) * defaultAreaWidth;
+		var yWidth = Math.round($editorGridY.val()) * defaultAreaHeight;
+
+		$editorGraphics.attr("cols", xWidth);
+		$editorGraphics.attr("rows", yWidth);
+		$editorGraphics.attr("maxlength", xWidth * yWidth);
+
+		$editorColliders.attr("cols", xWidth);
+		$editorColliders.attr("rows", yWidth);
+		$editorColliders.attr("maxlength", xWidth * yWidth);
+
+		$editorColors.attr("cols", xWidth);
+		$editorColors.attr("rows", yWidth);
+		$editorColliders.attr("maxlength", xWidth * yWidth);
+	}
+	
+	updateGridSizes();
+
 
 
 	// Click Events 
@@ -289,6 +422,24 @@ $(function() {
 		dialogState = true;
 	});
 
+	$editorExit.click(() => {
+		socket.emit("exit editor");
+	});
+
+	socket.on('open editor', () => {
+		$chatPage.fadeOut();
+		$editorPage.show();
+		$editorPage.css("display","flex");
+		$chatPage.off("click");
+	});
+
+	socket.on('exit editor', () => {
+		$editorPage.fadeOut();
+		$chatPage.show();
+		$chatPage.css("display","flex");
+		$editorPage.off("click");
+		$chatPage.on("click");
+	});
 
 	// Socket events
 	socket.on('redraw', (assets) => {

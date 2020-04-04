@@ -23,6 +23,42 @@
           <input class="usernameInput" type="text" maxlength="14" />
         </div>
       </li>
+      <li class="editor page">
+	<div class="editorForm">
+	        <label>Grid Size X</label>
+	        <input id="grid-size-x" type="number" value="1" min="1" max="10"/>
+	        <label>Grid Size Y</label>
+	        <input id="grid-size-y" type="number" value="1" min="1" max="10"/>
+		<br/>
+		<label>Unicode Evaluator</label>
+		<input id="editor-unicode-evaluator"</input>
+		<br/>
+		<p id="editor-unicode-output">&#x00A3;</p>
+		<br/>
+	        <label>Graphics</label>
+		<br/>
+	        <textarea wrap="hard" id="graphics-editor" class="editor-textbox"></textarea>
+		<br/>
+	        <label>Colliders</label>
+		<br/>
+	        <textarea wrap="hard" id="colliders-editor" class="editor-textbox"></textarea>
+		<br/>
+	        <label>Colors</label>
+		<br/>
+	        <textarea wrap="hard" id="colors-editor" class="editor-textbox"></textarea>
+		<br/>
+		<div id="colors-editor-map"></div>
+		<br/>
+		<label>Output</label>
+		<br/>
+		<textarea disabled id="editor-output" cols=50></textarea>
+		<br/>
+		<button id="exitEditor">Exit Editor</button>
+	</div>
+	<div class="gameArea" style="background:white;">
+		<div style="line-height:1;" id="previewFrame"></div>
+	</div>
+      </li>
     </ul>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://code.jquery.com/jquery-1.11.1.js"></script>

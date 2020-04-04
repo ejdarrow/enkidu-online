@@ -85,6 +85,16 @@ ul {
   display: none;
 }
 
+/* Editor page */
+.editor.page {
+  display: none;
+
+}
+/* Editor */
+.editor-textbox {
+  
+}
+
 /* Font */
 
 .messages {

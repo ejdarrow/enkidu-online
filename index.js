@@ -31,7 +31,11 @@ io.on('connection', function(socket){
 
 		//Move management happens here.
 		
-		io.emit('redraw', Object.values(locations));
+		var frameData = {};
+		frameData["frame"] = "Update Frame Somehow";
+		frameData["userX"] = data.location.x;
+		frameData["userY"] = data.location.y;
+		io.emit('redraw', frameData);
 	});
 
 	
@@ -59,7 +63,9 @@ io.on('connection', function(socket){
 			});
 		}
 	});
-	
+	socket.on('exit editor', () => {
+		socket.emit('exit editor');
+	});	
 	socket.on('typing', () => {
 		socket.broadcast.emit('typing', {
 			username: socket.username
@@ -87,10 +93,14 @@ io.on('connection', function(socket){
 
 
 	socket.on('new message', function(msg){
-		socket.broadcast.emit('new message', {
-			username : socket.username,
-			message : msg
-		});
+		if(msg == "/editor"){
+			socket.emit("open editor");
+		} else {
+			socket.broadcast.emit('new message', {
+				username : socket.username,
+				message : msg
+			});
+		}
 	});
 });
 
