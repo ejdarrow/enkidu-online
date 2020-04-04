@@ -1,0 +1,16 @@
+{
+	"name": "enkidu-online",
+	"version": "0.0.1",
+	"description": "A multiplayer online 2d Top-Down exploration game with user generated content.",
+	"main": "index.js",
+	"author": "Emily Darrow",
+	"license": "BSD",
+	"private": true,
+	"dependencies": {
+		"express": "^4.17.1",
+		"socket.io": "^2.3.0"
+	},
+	"scripts": {
+		"start": "node index.js"
+	}
+}
