@@ -99,6 +99,8 @@ const makeCharactersLocalized = (charactersInArea, areaDetails) => {
 		var characterPosition = localizedX + localizedY * areaWidth;
 		
 		localizedCharacters[characterPosition] = {
+			x: localizedX,
+			y: localizedY,
 			avatar: value.avatar,
 			color: value.color,
 			username: value.username
@@ -107,7 +109,58 @@ const makeCharactersLocalized = (charactersInArea, areaDetails) => {
 	return localizedCharacters;
 };
 
-const renderFrame = (areaDetails) => {
+const getViewport = (myLocation, areaDetails) => {
+	var localizedCharacterPosition = makeCharactersLocalized({"0":myLocation}, areaDetails);
+
+	var thePosition = {};
+	for(var key in localizedCharacterPosition){
+		thePosition = localizedCharacterPosition[key];
+	}
+	var viewport = {};
+	
+	
+	
+	if((thePosition.x + viewportWidth / 2) > (areaDetails.xWidth * areaWidthFactor)){
+		viewport = {
+			minX: areaDetails.xWidth * areaWidthFactor - viewportWidth - 1,
+			maxX: areaDetails.xWidth * areaWidthFactor,
+			minY: thePosition.y - Math.round(viewportHeight / 2),
+			maxY: thePosition.y + Math.round(viewportHeight /2),
+			dimX: areaDetails.xWidth * areaWidthFactor,
+			dimY: areaDetails.yWidth * areaHeightFactor
+		};
+	} else {
+		 viewport = {
+			minX: thePosition.x - Math.round(viewportWidth / 2),
+			maxX: thePosition.x + Math.round(viewportWidth / 2),
+			minY: thePosition.y - Math.round(viewportHeight / 2),
+			maxY: thePosition.y + Math.round(viewportHeight / 2),
+			dimX: areaDetails.xWidth * areaWidthFactor,
+			dimY: areaDetails.yWidth * areaHeightFactor
+		};
+	}
+	return viewport;
+}
+const inView = (i, viewport) => {
+	var x = i % viewport.dimX;
+	var y = Math.floor(i / viewport.dimX);
+	if(x >= viewport.minX && x <= viewport.maxX && y >= viewport.minY && y <= viewport.maxY){
+		return true;
+	} else {
+		return false;
+	}
+}
+
+const handleNewLines = (i, viewport) => {
+	var x = i % viewport.dimX;
+	if(x == viewport.maxX){
+		return true;
+	} else {
+		return false;
+	}
+}
+
+const renderFrame = (areaDetails, myLocation) => {
 	var frameText = "";
     var xWidth = Math.round(areaDetails.xWidth) * areaWidthFactor;
     var yWidth = Math.round(areaDetails.yWidth) * areaHeightFactor;
@@ -124,27 +177,35 @@ const renderFrame = (areaDetails) => {
 		
 		//TODO: Clip view to viewport
 		
+		var viewport = getViewport(myLocation, areaDetails);
 
 		for(var i = 0; i < appropriateLength; i++){
-			var color = "";
-			if(i in localizedCharacters){
-				color = localizedCharacters[i].color;
-			} else {
-				color = previewColorMap[colorsValue.charAt(i)] || "#000000";
-			}
-			var element = "<span style=\"white-space:pre; color:" + color + "; ";
-			element += "\"";
-			
-			element += ">";
-			if(i in localizedCharacters){
-				element += localizedCharacters[i].avatar;
-			} else {
-				element += graphicsValue.charAt(i);
-			}
-			element += "</span>";
-			frameText += element;
-			if(i%(xWidth) == (xWidth - 1)){
-				frameText += "<br/>";
+			if(inView(i, viewport)){
+				var color = "";
+				if(i in localizedCharacters){
+					color = localizedCharacters[i].color;
+				} else {
+					color = previewColorMap[colorsValue.charAt(i)] || "#000000";
+				}
+				var element = "<span style=\"white-space:pre; color:" + color + "; ";
+				
+				if(i in localizedCharacters && localizedCharacters[i].username == myLocation.username){
+					element += "text-decoration:underline;";
+				}
+				
+				element += "\"";
+				
+				element += ">";
+				if(i in localizedCharacters){
+					element += localizedCharacters[i].avatar;
+				} else {
+					element += graphicsValue.charAt(i);
+				}
+				element += "</span>";
+				frameText += element;
+				if(handleNewLines(i, viewport)){
+					frameText += "<br/>";
+				}
 			}
 		}
 		return frameText;
@@ -165,7 +226,7 @@ io.on('connection', function(socket){
 					area:"spawn"
 				},
 				username: socket.username,
-				avatar: socket.username.charAt(0),
+				avatar: socket.username?socket.username.charAt(0):"-",
 				color: "#FF0000"
 			}; //More to come here.
 			area = "spawn";
@@ -209,7 +270,7 @@ io.on('connection', function(socket){
 		}
 
 		try {
-			frameData["frame"] = renderFrame(areaDetails, locations[socket.username].location);
+			frameData["frame"] = renderFrame(areaDetails, locations[socket.username]);
 		} catch (err) {
 			socket.emit("draw error", "" + err);
 		}

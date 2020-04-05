@@ -459,6 +459,8 @@ $(function() {
 			prepend: true
 		});
 		addParticipantsMessage(data);
+		log("Enter to chat, wasd to move", { prepend:true });
+		
 		$inputMessage.blur();	
 	});
 
