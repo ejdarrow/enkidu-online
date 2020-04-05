@@ -45,6 +45,7 @@ $(function() {
 	var username;
 	var connected = false;
 	var dialogState = false;
+	var editorState = false;
 	var typing = false;
 	var lastTypingTime;
 	var $currentInput = $usernameInput.focus();
@@ -60,6 +61,11 @@ $(function() {
 		}
 		log(message);
 	}
+	
+	const addChatWarning = (data) => {
+		var message = data;
+		log(message);
+	}
 
 	const setUsername = () => {
 		username = cleanInput($usernameInput.val().trim());
@@ -72,7 +78,7 @@ $(function() {
 			$currentInput = $inputMessage.focus();
 
 			socket.emit('add user', username);
-			sendMove();
+			sendMove("N");
 		}
 	}
 	
@@ -198,33 +204,9 @@ $(function() {
 	}
 
 
-	//Movement
+	//Movement handled chiefly on backend.
 	// -- Collision detection on backend
 
-
-	var MOVE_INCREMENT = 1; 
-	
-	const goUp = () => {
-		yLoc += MOVE_INCREMENT;
-	}
-	
-	const goLeft = () => {
-		xLoc -= MOVE_INCREMENT;
-	}
-
-	const goRight = () => {
-		xLoc += MOVE_INCREMENT;
-	}
-
-	const goDown = () => {
-		yLoc -= MOVE_INCREMENT;
-	}
-
-
-
-	const logLocation = () => {
-		log(username + ": x=" + xLoc + ", y=" + yLoc);
-	}
 
 	//Draw logic
 	
@@ -232,25 +214,16 @@ $(function() {
 	
 
 	const drawFrame = (frameData) => {
-	//	logLocation();
 		$gameFrame.text(frameData.frame);
-		xLoc = frameData.userX;
-		yLoc = frameData.userY;
 		//Animations and shit can go here too.
 	}
 
 
 
 	
-	const sendMove = () => {
+	const sendMove = (dirCode) => {
 		var locationData = {
-			id: username + "_avatar",
-			location: {
-				x: xLoc,
-				y: yLoc
-			},
-			color: "#8B0000",
-			char:"NN"
+			direction: dirCode
 		};
 		socket.emit("move", locationData);
 	}
@@ -258,36 +231,34 @@ $(function() {
 	//Keyboard events
 
 	$window.keydown(event => {
-		if(!dialogState && username) { //We are logged in and not dialog
-			$currentInput.blur();
-			if(event.which === 87 || event.which === 38 ) { // w || up
-				goUp();
-				sendMove();
-			} else if(event.which === 65 || event.which === 37) { // a || left
-				goLeft();
-				sendMove();
-			} else if(event.which === 83 || event.which === 40) { // s || down
-				goDown();
-				sendMove();
-			} else if(event.which === 68 || event.which === 39) { // d || right
-				goRight();
-				sendMove();
-			}
-		}
-		if(event.which === 13) { //Pressing enter
-			if (username) {
-				if(dialogState){
-					sendMessage();
-					socket.emit('stop typing');
-					typing = false;
-					$currentInput.blur();
-					dialogState = false;
-				} else {
-					$currentInput.focus()
-					dialogState = true;
+		if(!editorState){
+			if(!dialogState && username) { //We are logged in and not dialog
+				$currentInput.blur();
+				if(event.which === 87 || event.which === 38 ) { // w || up
+					sendMove("U");
+				} else if(event.which === 65 || event.which === 37) { // a || left
+					sendMove("L");
+				} else if(event.which === 83 || event.which === 40) { // s || down
+					sendMove("D");
+				} else if(event.which === 68 || event.which === 39) { // d || right
+					sendMove("R");
 				}
-			} else {
-				setUsername();
+			}
+			if(event.which === 13) { //Pressing enter
+				if (username) {
+					if(dialogState){
+						sendMessage();
+						socket.emit('stop typing');
+						typing = false;
+						$currentInput.blur();
+						dialogState = false;
+					} else {
+						$currentInput.focus()
+						dialogState = true;
+					}
+				} else {
+					setUsername();
+				}
 			}
 		}
 	});
@@ -310,17 +281,35 @@ $(function() {
 	
 	$editorGraphics.on('input', () => {
 		updatePreviewFrame();
+		arrangeNewLines($editorGraphics);
 	});
 
 	$editorColliders.on('input', () => {
 		updatePreviewFrame();
+		arrangeNewLines($editorColliders);
 	});
 
 	$editorColors.on('input', () => {
 		updatePreviewFrame();
 		updateColorFields();
+		arrangeNewLines($editorColors);
 	});
-
+	
+	const arrangeNewLines = ($e) => {
+		var originalValue = $e.val();
+		var cursorPos = $e.prop("selectionStart");
+		
+		originalValue = originalValue.replace(/\n/g, ""); //Strip existing newlines
+		var splitValue = [];
+		var xWidth = $editorGridX.val() * defaultAreaWidth;
+		var yWidth = $editorGridY.val() * defaultAreaHeight;
+		for(var i = 0; i < yWidth; i++){
+			splitValue.push(originalValue.substring(i*xWidth, (i+1)*xWidth));
+		}
+		$e.val(splitValue.join("\n"));
+		$e.prop("selectionStart", cursorPos);
+		$e.prop("selectionEnd", cursorPos);
+	}
 
 	const updateColorFields = () => {
 		
@@ -338,8 +327,8 @@ $(function() {
 
 	const updatePreviewFrame = () => {
 		var frameText = "";
-                var xWidth = Math.round($editorGridX.val()) * defaultAreaWidth;
-                var yWidth = Math.round($editorGridY.val()) * defaultAreaHeight;
+        var xWidth = Math.round($editorGridX.val()) * defaultAreaWidth;
+        var yWidth = Math.round($editorGridY.val()) * defaultAreaHeight;
 		var appropriateLength = xWidth * yWidth;
 
 		var graphicsValue = $editorGraphics.val().replace(/\n/g, "");
@@ -396,15 +385,15 @@ $(function() {
 
 		$editorGraphics.attr("cols", xWidth);
 		$editorGraphics.attr("rows", yWidth);
-		$editorGraphics.attr("maxlength", xWidth * yWidth);
+		$editorGraphics.attr("maxlength", (xWidth + 1) * yWidth);
 
 		$editorColliders.attr("cols", xWidth);
 		$editorColliders.attr("rows", yWidth);
-		$editorColliders.attr("maxlength", xWidth * yWidth);
+		$editorColliders.attr("maxlength", (xWidth + 1) * yWidth);
 
 		$editorColors.attr("cols", xWidth);
 		$editorColors.attr("rows", yWidth);
-		$editorColliders.attr("maxlength", xWidth * yWidth);
+		$editorColliders.attr("maxlength", (xWidth + 1) * yWidth);
 	}
 	
 	updateGridSizes();
@@ -427,6 +416,7 @@ $(function() {
 	});
 
 	socket.on('open editor', () => {
+		editorState = true;
 		$chatPage.fadeOut();
 		$editorPage.show();
 		$editorPage.css("display","flex");
@@ -434,6 +424,7 @@ $(function() {
 	});
 
 	socket.on('exit editor', () => {
+		editorState = false;
 		$editorPage.fadeOut();
 		$chatPage.show();
 		$chatPage.css("display","flex");
@@ -473,6 +464,9 @@ $(function() {
 
 	socket.on('new message', (data) => {
 		addChatMessage(data);
+	});
+	socket.on('draw error', (data) => {
+		addChatWarning(data);
 	});
 
 	socket.on('user joined', (data) => {
