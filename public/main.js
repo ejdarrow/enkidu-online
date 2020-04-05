@@ -214,7 +214,7 @@ $(function() {
 	
 
 	const drawFrame = (frameData) => {
-		$gameFrame.text(frameData.frame);
+		$gameFrame.html(frameData.frame);
 		//Animations and shit can go here too.
 	}
 

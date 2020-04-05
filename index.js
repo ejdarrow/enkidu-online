@@ -25,6 +25,10 @@ var numUsers = 0;
 var maxUsers = 10;
 var areaWidthFactor = 40;
 var areaHeightFactor = 20;
+
+var viewportWidth = 20;
+var viewportHeight = 10;
+
 var locations = {};
 var areas = [
 	"spawn"
@@ -33,7 +37,7 @@ var areas = [
 const loadAreaDetails = (areaName) => {
 	try {
 		var areaDetails = fs.readFileSync(path.join(__dirname, 'staticAssets/' + areaName + '.json'));
-		return areaDetails;
+		return JSON.parse(areaDetails);
 	} catch (err) {
 		console.log(err);
 	}
@@ -47,10 +51,10 @@ const checkCollision = (areaDetails, potentialPosition) => {
 	var userPotentialX = potentialPosition.x;
 	var userPotentialY = potentialPosition.y;
 	
-	var areaPotentialX = Math.round(xWidth/2) + userPotentailX;
+	var areaPotentialX = Math.round(xWidth/2) + userPotentialX;
 	var areaPotentialY = Math.round(yWidth/2) + userPotentialY;
 	
-	var charPositionToCheck = areaPotentialX + xWidth * areaPotentialY - 1;
+	var charPositionToCheck = areaPotentialX + xWidth * areaPotentialY;
 	if(defaultNonColliders.includes(areaDetails.colliders.charAt(charPositionToCheck))){
 		return "pass";
 	} else { //Do other collision-triggered things here
@@ -68,6 +72,41 @@ const getPreviewColorMap = () => {
 	};
 }
 
+const getCharactersInArea = (area) => {
+	var areaLocations = {};
+	for (key in locations){
+		var value = locations[key];
+		if("location" in value){
+			if("area" in value.location){
+				if(value.location.area == area){
+					areaLocations[key] = value;
+				}
+			}
+		}
+	}
+	return areaLocations;
+}
+
+const makeCharactersLocalized = (charactersInArea, areaDetails) => {
+	var localizedCharacters = {};
+	var areaWidth = areaDetails.xWidth * areaWidthFactor;
+	var areaHeight = areaDetails.yWidth * areaHeightFactor;
+	for(key in charactersInArea) {
+		var value = charactersInArea[key];
+		var localizedX = value.location.x + Math.round(areaWidth)/2;
+		var localizedY = value.location.y + Math.round(areaHeight)/2;
+		
+		var characterPosition = localizedX + localizedY * areaWidth;
+		
+		localizedCharacters[characterPosition] = {
+			avatar: value.avatar,
+			color: value.color,
+			username: value.username
+		};
+	}
+	return localizedCharacters;
+};
+
 const renderFrame = (areaDetails) => {
 	var frameText = "";
     var xWidth = Math.round(areaDetails.xWidth) * areaWidthFactor;
@@ -80,18 +119,28 @@ const renderFrame = (areaDetails) => {
 		
 		var previewColorMap = getPreviewColorMap();
 
-		//TODO: Get character locations as a map
+		var charactersInArea = getCharactersInArea(areaDetails.name);
+		var localizedCharacters = makeCharactersLocalized(charactersInArea, areaDetails);
+		
 		//TODO: Clip view to viewport
+		
 
 		for(var i = 0; i < appropriateLength; i++){
-			var collider = false;
-			var color = previewColorMap[colorsValue.charAt(i)] || "#000000";
+			var color = "";
+			if(i in localizedCharacters){
+				color = localizedCharacters[i].color;
+			} else {
+				color = previewColorMap[colorsValue.charAt(i)] || "#000000";
+			}
 			var element = "<span style=\"white-space:pre; color:" + color + "; ";
 			element += "\"";
 			
 			element += ">";
-			element += graphicsValue.charAt(i);
-
+			if(i in localizedCharacters){
+				element += localizedCharacters[i].avatar;
+			} else {
+				element += graphicsValue.charAt(i);
+			}
 			element += "</span>";
 			frameText += element;
 			if(i%(xWidth) == (xWidth - 1)){
@@ -116,7 +165,8 @@ io.on('connection', function(socket){
 					area:"spawn"
 				},
 				username: socket.username,
-				avatar: socket.username.substring(0, 2)
+				avatar: socket.username.charAt(0),
+				color: "#FF0000"
 			}; //More to come here.
 			area = "spawn";
 			socket.join(area + "_area");
@@ -155,13 +205,13 @@ io.on('connection', function(socket){
 					break;
 			}
 		} catch (err) {
-			socket.emit("draw error", "Collision detection failure.");
+			socket.emit("draw error", "" + err);
 		}
 
 		try {
 			frameData["frame"] = renderFrame(areaDetails, locations[socket.username].location);
 		} catch (err) {
-			socket.emit("draw error", "Area " + area + " not found.");
+			socket.emit("draw error", "" + err);
 		}
 		io.to(area + "_area").emit('redraw', frameData);
 	});

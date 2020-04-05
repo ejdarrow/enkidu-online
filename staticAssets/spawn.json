@@ -9,5 +9,6 @@
 		"3": "#0000FF"
 	},
 	"xWidth": 1,
-	"yWidth": 1
+	"yWidth": 1,
+	"name": "spawn"
 }
