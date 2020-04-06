@@ -119,26 +119,15 @@ const getViewport = (myLocation, areaDetails) => {
 	var viewport = {};
 	
 	
+	 viewport = {
+		minX: thePosition.x - Math.round(viewportWidth / 2),
+		maxX: Math.max(thePosition.x + Math.round(viewportWidth / 2), viewportWidth),
+		minY: thePosition.y - Math.round(viewportHeight / 2),
+		maxY: Math.max(thePosition.y + Math.round(viewportHeight / 2), viewportHeight),
+		dimX: areaDetails.xWidth * areaWidthFactor,
+		dimY: areaDetails.yWidth * areaHeightFactor
+	};
 	
-	if((thePosition.x + viewportWidth / 2) > (areaDetails.xWidth * areaWidthFactor)){
-		viewport = {
-			minX: areaDetails.xWidth * areaWidthFactor - viewportWidth - 1,
-			maxX: areaDetails.xWidth * areaWidthFactor,
-			minY: thePosition.y - Math.round(viewportHeight / 2),
-			maxY: thePosition.y + Math.round(viewportHeight /2),
-			dimX: areaDetails.xWidth * areaWidthFactor,
-			dimY: areaDetails.yWidth * areaHeightFactor
-		};
-	} else {
-		 viewport = {
-			minX: thePosition.x - Math.round(viewportWidth / 2),
-			maxX: thePosition.x + Math.round(viewportWidth / 2),
-			minY: thePosition.y - Math.round(viewportHeight / 2),
-			maxY: thePosition.y + Math.round(viewportHeight / 2),
-			dimX: areaDetails.xWidth * areaWidthFactor,
-			dimY: areaDetails.yWidth * areaHeightFactor
-		};
-	}
 	return viewport;
 }
 const inView = (i, viewport) => {
@@ -153,7 +142,8 @@ const inView = (i, viewport) => {
 
 const handleNewLines = (i, viewport) => {
 	var x = i % viewport.dimX;
-	if(x == viewport.maxX){
+	var y = Math.floor(i / viewport.dimX);
+	if((x == (viewport.dimX - 1))&& y >= viewport.minY && y <= viewport.maxY){
 		return true;
 	} else {
 		return false;
@@ -203,9 +193,10 @@ const renderFrame = (areaDetails, myLocation) => {
 				}
 				element += "</span>";
 				frameText += element;
-				if(handleNewLines(i, viewport)){
+				
+			}
+			if(handleNewLines(i, viewport)){
 					frameText += "<br/>";
-				}
 			}
 		}
 		return frameText;
