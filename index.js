@@ -265,7 +265,8 @@ io.on('connection', function(socket){
 		} catch (err) {
 			socket.emit("draw error", "" + err);
 		}
-		io.to(area + "_area").emit('redraw', frameData);
+		io.to(area + "_area").emit('redraw', frameData); // Gotta do something here.
+		
 	});
 
 	
